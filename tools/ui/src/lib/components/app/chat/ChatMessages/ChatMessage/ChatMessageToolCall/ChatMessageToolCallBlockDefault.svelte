@@ -29,8 +29,16 @@
 
 	const title = $derived(getToolUi(section.toolName)?.label ?? section.toolName ?? '');
 	const outputKind = $derived(classifyToolResult(section.toolResult));
+
+	// Attachments extracted from a tool result are persisted on the *tool
+	// result message* (surfaced as section.toolResultExtras), while the
+	// `attachments` prop carries the anchor assistant message's extras.
+	// Merge both so MCP tools (routed here, not to the read_media block)
+	// can resolve their [Attachment saved: ...] placeholders to media.
+	const allExtras = $derived([...(attachments ?? []), ...(section.toolResultExtras ?? [])]);
+
 	const parsedLines: ToolResultLine[] = $derived(
-		section.toolResult ? parseToolResultWithMedia(section.toolResult, attachments) : []
+		section.toolResult ? parseToolResultWithMedia(section.toolResult, allExtras) : []
 	);
 </script>
 
@@ -102,7 +110,7 @@
 						maxHeight={MAX_HEIGHT_CODE_BLOCK}
 					/>
 				{:else if outputKind === ToolResultKind.MARKDOWN}
-					<MarkdownContent {attachments} content={section.toolResult} />
+					<MarkdownContent attachments={allExtras} content={section.toolResult} />
 				{:else}
 					<div class="overflow-auto">
 						{#each parsedLines as line, i (i)}
